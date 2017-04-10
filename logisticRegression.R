@@ -125,27 +125,21 @@ corrplot(a1, method="circle", order = "hclust", tl.col = "black", tl.srt = 90)
 ##########################
 ## 3. Forward Selection ##
 ##########################
-# summary(step(lm(booking_bool~., data = dataSelect), direction = "forward"))
-lm(formula = booking_bool ~ prop_country_id + prop_starrating +
-           prop_review_score + prop_brand_bool + prop_location_score1 +
-           prop_log_historical_price + price_usd + promotion_flag +
-           srch_length_of_stay + srch_booking_window + srch_adults_count +
-           srch_children_count + srch_room_count + srch_saturday_night_bool +
-           orig_destination_distance + random_bool, data = dataSelect)
+# summary(step(glm(booking_bool~., data = dataSelect, family = 'binomial'), direction = "forward"))
 
 ###########################
 ## 4. Backward Selection ##
 ###########################
-# (step(lm(booking_bool~., data = dataSelect), direction = "backward"))
-lm(formula = booking_bool ~ prop_review_score + promotion_flag + srch_saturday_night_bool + random_bool, data = dataSelect)
+summary(step(glm(booking_bool~., data = dataSelect, family = 'binomial'), direction = "backward"))
 
 ############################
 ## 5. Logistic Regression ##
 ############################
 
-dataSelect = dat %>% select(booking_bool, prop_review_score, promotion_flag, 
-                            srch_saturday_night_bool, random_bool) %>% na.omit()
-logistic = glm(formula = booking_bool ~ prop_review_score + promotion_flag + srch_saturday_night_bool + random_bool, 
+dataSelect = dat %>% select(booking_bool, prop_starrating, prop_review_score,
+                            price_usd, promotion_flag, srch_children_count,
+                            srch_room_count, srch_saturday_night_bool, random_bool) %>% na.omit()
+logistic = glm(formula = booking_bool ~ ., 
                data = dataSelect, family = "binomial")
 
 PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.5, 'Positive', 'Negative')
@@ -162,10 +156,11 @@ a2 = dataSelect %>% filter(booking_bool==FALSE)
 set.seed(1234)
 a2 = a2[sample(dim(a2)[1],dim(a1)[1]),]
 dataBalance = rbind(a1,a2)
-dataBalance = select(dataBalance,booking_bool,prop_review_score,promotion_flag,
-                     srch_saturday_night_bool,random_bool) %>% na.omit()
+dataBalance = select(dataBalance, booking_bool, prop_starrating, prop_review_score,
+                     price_usd, promotion_flag, srch_children_count,
+                     srch_room_count, srch_saturday_night_bool, random_bool) %>% na.omit()
 dim(dataBalance) 
-logistic = glm(formula = booking_bool ~ prop_review_score + promotion_flag + srch_saturday_night_bool + random_bool, 
+logistic = glm(formula = booking_bool ~ ., 
                data = dataBalance, family = "binomial")
 
 PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.5, 'Positive', 'Negative')
@@ -174,6 +169,16 @@ table(dataBalance$booking_bool, PosOrNeg) # 調整sample後,準確率60%
 # AUC 0.66 效果不理想
 plot(roc(dataBalance$booking_bool ~ predict.glm(logistic, type = "response")),
      main = "ROC curve", print.auc = TRUE)
+
+
+
+
+
+
+
+
+
+
 
 
 
