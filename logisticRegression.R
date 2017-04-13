@@ -29,22 +29,42 @@ library(pROC)
 ##################
 # we want to predict booking_bool
 library(readr)
-dat = read_csv("~/Documents/big_data_course/ProjectOTA/sample10000.csv", 
-               col_types = cols(booking_bool = col_logical(), 
-                                click_bool = col_logical(), 
-                                position = col_character(), 
+dat = read_csv('train.csv', n_max = 10000, na = 'NULL',
+               col_types = cols(booking_bool = col_integer(), 
+                                click_bool = col_integer(), 
+                                position = col_number(), 
                                 prop_id = col_character(), 
-                                random_bool = col_logical(), 
+                                random_bool = col_integer(), 
                                 site_id = col_character(), 
                                 srch_id = col_character(), 
                                 visitor_location_country_id = col_character(),
                                 visitor_hist_adr_usd = col_number(),
                                 srch_destination_id = col_character(),
                                 prop_country_id = col_character(),
-                                srch_saturday_night_bool = col_logical(),
-                                prop_brand_bool = col_logical()
+                                srch_saturday_night_bool = col_integer(),
+                                prop_brand_bool = col_integer()
                )
 )
+
+length(unique(dat$srch_id))
+length(unique(dat$site_id))
+length(unique(dat$visitor_location_country_id))
+
+a1 = dat %>% group_by(srch_id, click_bool, booking_bool) %>% summarize(count = n())
+print(a1)
+
+# click rate per srch_id
+a1 = dat %>% select(srch_id, click_bool) %>% group_by(srch_id) %>% summarize(mean = mean(click_bool)) 
+sum(a1$mean>0) / (length(unique(a1$srch_id)))
+
+# booking rate per srch_id
+a1 = dat %>% select(srch_id, booking_bool) %>% group_by(srch_id) %>% summarize(mean = mean(booking_bool)) 
+sum(a1$mean>0) / (length(unique(a1$srch_id)))
+
+# 點擊次數÷ 曝光次數= 點閱率
+sum(dat$click_bool>0) / 10000                   # 0.0457
+sum(dat$booking_bool>0) / 10000                 # 0.0281
+sum(dat$booking_bool>0) / sum(dat$click_bool>0) #0.61488
 
 ##########################
 ## 2. drop some columns ##
@@ -57,6 +77,13 @@ dat = read_csv("~/Documents/big_data_course/ProjectOTA/sample10000.csv",
 #         Sys.sleep(4);
 #         cat(i)
 # }
+
+t1 = vector()
+for (i in 1:dim(dat)[2]){
+        t1[i] = sum(is.na(dat[,i]))
+}
+data.frame(colname = colnames(dat), na = t1)
+
 
 # select some columns
 dataSelect = dat %>% select(
@@ -74,7 +101,7 @@ dataSelect = dat %>% select(
         prop_location_score1,
         # prop_location_score2,                     # 2187 NAs
         prop_log_historical_price,
-        # position,
+        position,
         price_usd,
         promotion_flag,
         # srch_destination_id,
@@ -111,10 +138,10 @@ dataSelect = dat %>% select(
         # comp8_rate,
         # comp8_inv,
         # comp8_rate_percent_diff,
-        # click_bool,
+        click_bool
         # gross_bookings_usd,
-        booking_bool
-        ) %>%
+        # booking_bool
+) %>%
         na.omit()
 
 dim(dataSelect)
@@ -125,57 +152,47 @@ corrplot(a1, method="circle", order = "hclust", tl.col = "black", tl.srt = 90)
 ##########################
 ## 3. Forward Selection ##
 ##########################
-# summary(step(glm(booking_bool~., data = dataSelect, family = 'binomial'), direction = "forward"))
+# formu = summary(step(glm(click_bool~., data = dataSelect, family = 'binomial'), direction = "forward"))$call
 
 ###########################
 ## 4. Backward Selection ##
 ###########################
-summary(step(glm(booking_bool~., data = dataSelect, family = 'binomial'), direction = "backward"))
+# 搵AIC最低
+formu = summary(step(glm(click_bool~., data = dataSelect, family = 'binomial'), direction = "backward"))$call
+
+# glm(formula = click_bool ~ prop_starrating + prop_review_score + position + price_usd + promotion_flag, family = "binomial", data = dataSelect)
 
 ############################
 ## 5. Logistic Regression ##
 ############################
 
-dataSelect = dat %>% select(booking_bool, prop_starrating, prop_review_score,
-                            price_usd, promotion_flag, srch_children_count,
-                            srch_room_count, srch_saturday_night_bool, random_bool) %>% na.omit()
-logistic = glm(formula = booking_bool ~ ., 
+a1 = as.character(formu)[[2]]
+a1 = unlist(strsplit(a1 , split = '[~+]'))
+a1 = gsub(" ","",a1)
+cat(a1, sep = ', ')
+
+dataSelect = dat %>% 
+        select(click_bool, prop_starrating, prop_review_score, position, price_usd, promotion_flag) %>% 
+        na.omit()
+logistic = glm(formula = click_bool ~ ., 
                data = dataSelect, family = "binomial")
+print(summary(logistic))
 
-PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.5, 'Positive', 'Negative')
-table(dataSelect$booking_bool, PosOrNeg) # 準確率97%,但全部都猜不會訂房,那就是說可能是未找到重要變數(首)或者抽樣不平均(次)
-
-# AUC 0.675 效果不理想
-plot(roc(dataSelect$booking_bool ~ predict.glm(logistic, type = "response")),
+hist(predict.glm(logistic, type = "response"), col = "grey90")
+plot(roc(dataSelect$click_bool ~ predict.glm(logistic, type = "response")),
      main = "ROC curve", print.auc = TRUE)
 
+PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.2, 'Positive', 'Negative')
+table(dataSelect$click_bool, PosOrNeg)
 
-# Try to deal with the problem of imbalance data --> stratified sampling
-a1 = dataSelect %>% filter(booking_bool==TRUE)
-a2 = dataSelect %>% filter(booking_bool==FALSE)
-set.seed(1234)
-a2 = a2[sample(dim(a2)[1],dim(a1)[1]),]
-dataBalance = rbind(a1,a2)
-dataBalance = select(dataBalance, booking_bool, prop_starrating, prop_review_score,
-                     price_usd, promotion_flag, srch_children_count,
-                     srch_room_count, srch_saturday_night_bool, random_bool) %>% na.omit()
-dim(dataBalance) 
-logistic = glm(formula = booking_bool ~ ., 
-               data = dataBalance, family = "binomial")
+PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.15, 'Positive', 'Negative')
+table(dataSelect$click_bool, PosOrNeg)
 
-PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.5, 'Positive', 'Negative')
-table(dataBalance$booking_bool, PosOrNeg) # 調整sample後,準確率60%
-
-# AUC 0.66 效果不理想
-plot(roc(dataBalance$booking_bool ~ predict.glm(logistic, type = "response")),
-     main = "ROC curve", print.auc = TRUE)
+PosOrNeg = ifelse(predict.glm(logistic, type = "response") >=0.1, 'Positive', 'Negative')
+table(dataSelect$click_bool, PosOrNeg)
 
 
-
-
-
-
-
+####################
 
 
 
