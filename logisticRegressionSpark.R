@@ -33,8 +33,8 @@ Sys.setenv(SPARK_MEM="1g")
 ##################
 # we want to predict click_bool
 
-# df = read.df("sample10000.csv",
-#         source = "csv", header="true", inferSchema = "true")
+df = read.df("sample10000.csv",
+        source = "csv", header="true", inferSchema = "true")
 # 
 # schema = structType(structField("srch_id", "string"))
 # df = collect(dapply(df, function(x){x}, schema))
@@ -42,13 +42,13 @@ Sys.setenv(SPARK_MEM="1g")
 # 直接讀檔為SparkDataFrame失敗，原因未明。目前方法為先讀入再轉換為SparkDataFrame
 library(readr)
 dat = read_csv('train.csv', n_max = 10000, na = 'NULL',
-               col_types = cols(booking_bool = col_integer(), 
-                                click_bool = col_integer(), 
-                                position = col_number(), 
-                                prop_id = col_character(), 
-                                random_bool = col_integer(), 
-                                site_id = col_character(), 
-                                srch_id = col_character(), 
+               col_types = cols(booking_bool = col_integer(),
+                                click_bool = col_integer(),
+                                position = col_number(),
+                                prop_id = col_character(),
+                                random_bool = col_integer(),
+                                site_id = col_character(),
+                                srch_id = col_character(),
                                 visitor_location_country_id = col_character(),
                                 visitor_hist_adr_usd = col_number(),
                                 srch_destination_id = col_character(),

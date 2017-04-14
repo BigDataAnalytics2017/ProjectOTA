@@ -3,12 +3,8 @@
 # title: logistic regression 
 # data: sample 10000        
 #---------------------------
-library(rpart)
-library(rpart.plot)
-library(randomForest)
 library(dplyr)
 library(ggplot2)
-library(GGally)
 library(corrplot)
 library(RColorBrewer)
 library(pROC)
@@ -29,7 +25,7 @@ library(pROC)
 ##################
 # we want to predict booking_bool
 library(readr)
-dat = read_csv('train.csv', n_max = 10000, na = 'NULL',
+dat = read_csv('train.csv', n_max = 20000, na = 'NULL',
                col_types = cols(booking_bool = col_integer(), 
                                 click_bool = col_integer(), 
                                 position = col_number(), 
@@ -45,6 +41,10 @@ dat = read_csv('train.csv', n_max = 10000, na = 'NULL',
                                 prop_brand_bool = col_integer()
                )
 )
+
+test_data = dat[10001:20000,]
+
+dat = dat[1:10000,]
 
 length(unique(dat$srch_id))
 length(unique(dat$site_id))
@@ -193,6 +193,31 @@ table(dataSelect$click_bool, PosOrNeg)
 
 
 ####################
+
+#############
+## testing ##
+#############
+
+test_data_select = test_data %>% 
+        select(click_bool, prop_starrating, prop_review_score, position, price_usd, promotion_flag) %>% 
+        na.omit()
+plot(roc(dataSelect$click_bool ~ ),
+     main = "ROC curve", print.auc = TRUE)
+
+PosOrNeg = ifelse(predict.glm(logistic, 
+                              newdata = test_data_select,
+                              type = "response") >=0.1, 'Positive', 'Negative')
+table(test_data_select$click_bool, PosOrNeg)
+
+
+
+
+
+
+
+
+
+
 
 
 
