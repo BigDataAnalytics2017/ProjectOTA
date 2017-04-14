@@ -8,10 +8,8 @@ library(rpart.plot)
 library(randomForest)
 library(dplyr)
 library(ggplot2)
-library(GGally)
 library(corrplot)
 library(RColorBrewer)
-library(pROC)
 #----------------------------
 # 1. read file
 # 2. drop some columns: 由於沒任何一筆資料完整，所以要先挑選變數
