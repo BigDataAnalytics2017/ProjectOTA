@@ -1,0 +1,440 @@
+---
+title: "Expedia點擊率預測(期中進度)"
+author: "蔡漢龍 沈柏宇 梁家安"
+date: "19th April 2017"
+output: 
+  html_document:
+    code_folding: hide
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE)
+```
+
+```{r, echo=FALSE}
+#---------------------------#
+# date: 2070416             #
+# title: Decision Tree Test #
+# data: 100MB               #
+#---------------------------#
+# 目標：預測點擊率click_bool
+# 1. read file
+# 2. drop some columns: 由於沒任何一筆資料完整，所以要先挑選變數
+# 3. classification tree
+#       發現分類結果皆為Negative --> imbalance data
+#               嘗試處理imbalance data問題 --> stratified sampling
+#               效果未如理想
+# 由於這次是單機運行，擔心電腦負荷問題，所以選用簡單的方法
+# 至於Spark還在測試，由於不斷出現Warning或Error，未能在此報告使用
+#---------------------------------------------------------------------
+```
+
+# 簡介
+
+這是[kaggle](https://www.kaggle.com/c/expedia-personalized-sort)有關Expedia網站的資料，我們要預測使用者在網站搜尋後，在推薦清單上的點擊率(click_bool)。目前是用R運行，但在Spark上遇到些問題仍未解決，期末會轉至Python，配搭Spark及Google Cloud Platform執行。期中報告使用train.csv前三十五萬筆資料(100MB)，選取的方法為分類樹(Decision Tree)，考慮到個人電腦運算速度及負荷，分類樹執行速度較快，至於較複雜或運算時間較長的方法如隨機森林(Random Forest)則後續至Google Cloud Platform上執行。
+
+目前遇到的難題，是資料不平均，只有少數資料顯示點擊，如果全部預測不會點擊，準確率高達95%，但無法判斷會點擊的人次。針對上述問題，本次採用方法為使點擊及不點擊資料比例接近1:1，使用Under-Sampling及Over-Sampling的方法，但效果未如理想，之後會嘗試加權或其他演算法。
+
+<br>
+
+# 讀檔
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(RColorBrewer)
+library(readr)
+dat = read_csv('train.csv', n_max = 350000, na = 'NULL',
+               col_types = cols(booking_bool = col_logical(), 
+                                click_bool = col_logical(), 
+                                position = col_number(), 
+                                prop_id = col_character(), 
+                                random_bool = col_logical(), 
+                                site_id = col_character(), 
+                                srch_id = col_character(), 
+                                visitor_location_country_id = col_character(),
+                                visitor_hist_adr_usd = col_number(),
+                                srch_destination_id = col_character(),
+                                prop_country_id = col_character(),
+                                srch_saturday_night_bool = col_logical(),
+                                prop_brand_bool = col_logical(),
+                                promotion_flag = col_logical()
+               )
+)
+
+```
+
+## 資料大小
+```{r}
+format(object.size(dat), units = "Mb")
+```
+
+<br>
+
+# 資料描述
+
+##以人次計算
+
+點擊次數 ÷ 曝光次數 
+
+```{r}
+sum(dat$click_bool>0) / dim(dat)[1]             
+```
+
+訂房次數 ÷ 曝光次數 
+```{r}
+sum(dat$booking_bool>0) / dim(dat)[1]           
+```
+
+訂房次數 ÷ 點擊次數
+```{r}
+sum(dat$booking_bool>0) / sum(dat$click_bool>0)
+```
+
+<br>
+
+# 篩選欄位
+
+## 篩選條件
+
+NA太多及種類太多的刪除。建模時出現NA的該筆資料會被刪去，使樣本數減少；一些欄NA太多的欄位亦不適宜填補，因無法反映資料真實狀況；種類太多在訓練資料時可以使用，但在實驗資料若出現新的種類，則會無法辨識；hist欄位的資料，之後可新增一欄判斷使用者有沒有登入帳號；至於與其他競爭對手對比，即comp欄位，之後會以相加或取平均方式處理；date_time之後可考慮截取年月日星期為欄位；position在test.csv中沒有，詢問助教後說這次只用train.csv,可以選用；book_bool則不能放，因為預測為click_bool，會有邏輯矛盾。這次以最簡單的原則選取欄位。
+
+## 格式判斷
+
+欄位格式方面，假設prop_review_score及position為數字，即'5'>'4'>'3'以及'5'-'4'='4'-'3'；site_id則改為字串。
+
+```{r}
+t1 = vector()
+for (i in 1:dim(dat)[2]){
+        t1[i] = sum(is.na(dat[,i]))
+}
+
+naPercent = data.frame(colname = colnames(dat), 
+                na = t1, percent = round(t1/dim(dat)[1]*100,2), 
+                class = as.vector(unlist(sapply(dat,class)))[-3]
+           ) %>%
+        arrange(-percent, class)
+naPercent$keep = c(rep('X',30),'O','X','O',rep('X',4),rep('O',11), 'X', rep('O',4), 'X')
+
+naPercent = naPercent %>%
+        arrange(keep, -percent, class)
+knitr::kable(naPercent)
+```
+
+
+```{r select data}
+# select some columns
+dataSelect = dat %>% select(
+        # srch_id,
+        # date_time,
+        site_id,                                  # 29可以等樣本數大d先放
+        # visitor_location_country_id,            # 56
+        # visitor_hist_starrating,
+        # visitor_hist_adr_usd,
+        # prop_country_id,                        # 62
+        # prop_id,                                # 14568
+        prop_starrating,
+        prop_review_score,
+        prop_brand_bool,
+        prop_location_score1,
+        # prop_location_score2,                     # 2187 NAs
+        prop_log_historical_price,
+        position,                                # 很重要，但真testing data沒有
+        price_usd,
+        promotion_flag,
+        # srch_destination_id,
+        srch_length_of_stay,
+        srch_booking_window,                       #(可考慮整合0-5,6-10)
+        srch_adults_count,
+        srch_children_count,
+        srch_room_count,
+        srch_saturday_night_bool,
+        # srch_query_affinity_score,               # 3137 NAs
+        # orig_destination_distance,               # NAs
+        random_bool,
+        # comp1_rate,                              # 可相加或取平均處理, 可能大量雜訊，例如忽視自己分數較低填NA. bool相加，diff取平均, NA<-0
+        # comp1_inv,
+        # comp1_rate_percent_diff,
+        # comp2_rate,
+        # comp2_inv,
+        # comp2_rate_percent_diff,
+        # comp3_rate,
+        # comp3_inv,
+        # comp3_rate_percent_diff,
+        # comp4_rate,
+        # comp4_inv,
+        # comp4_rate_percent_diff,
+        # comp5_rate,
+        # comp5_inv,
+        # comp5_rate_percent_diff,
+        # comp6_rate,
+        # comp6_inv,
+        # comp6_rate_percent_diff,
+        # comp7_rate,
+        # comp7_inv,
+        # comp7_rate_percent_diff,
+        # comp8_rate,
+        # comp8_inv,
+        # comp8_rate_percent_diff,
+        click_bool                                      # 很重要，本次預測目標
+        # gross_bookings_usd,                           # 很重要，但真testing data沒有
+        # booking_bool                                  # 很重要，但真testing data沒有
+        ) %>%
+        na.omit() %>%
+        as.data.frame()
+```
+        
+## 相關係數
+
+欄位之間的相關性較低,無共線性問題。但click_bool與其他欄位相關係數接近零，似乎不是好事。
+
+```{r}
+a1 = cor(dataSelect[, which(sapply(dataSelect,class) %in% c("numeric","integer","logical"))])
+corrplot(a1, method="circle", order = "hclust", tl.col = "black", tl.srt = 90)
+```
+
+## 檢視有沒有點擊下，各欄位分佈狀況
+
+僅prop_brand_bool, promotion_flag與position較能看見兩者不同，可預期分類不會理想。至於price_usd可能有離群值問題，則於後續處理。
+
+```{r}
+for (i in 1:(dim(dataSelect)[2]-1)){
+        if (class(dataSelect[,i]) %in% c("numeric","integer")){
+                if (colnames(dataSelect)[i]=='price_usd'){
+                        plot1 = dataSelect %>%
+                                ggplot(aes(x=click_bool, y=price_usd, colour=click_bool)) + 
+                                geom_boxplot(alpha = 0.5) + 
+                                coord_flip()
+                        print(plot1)
+                } else {
+                        plot1 = dataSelect %>% ggplot(aes(x=dataSelect[,i], fill = click_bool, colour = click_bool)) + geom_density(alpha=0.2) + 
+                        xlab(colnames(dataSelect)[i])
+                print(plot1)
+                }
+                
+        } else if (class(dataSelect[,i]) == "logical") { 
+                plot1 = dataSelect %>% ggplot(aes(x = click_bool, y = (..count..)/sum(..count..),
+                                          fill = dataSelect[,i])) + 
+                        geom_bar(position = "dodge", colour = "grey0") + 
+                        xlab('click_bool') + ylab('proportion') +  
+                        scale_fill_manual(values=c("#ef8a62","#67a9cf"), 
+                                          guide = guide_legend(title = colnames(dataSelect)[i]))
+                print(plot1)        
+        }
+}
+```
+
+<br>
+
+# 資料切割
+
+80%為訓練資料集，20%成為測試資料集，根據點擊比例抽樣。先將資料分為有點擊與沒點擊兩組，各自隨機抽出80%，這兩組的80%合併為訓練資料集，餘下80%為測試資料集。
+
+```{r cut data}
+dataClickTrue = dataSelect %>% filter(click_bool==TRUE)
+dataClickFalse = dataSelect %>% filter(click_bool==FALSE)
+
+dataClickTrueTrain = dataClickTrue[sample(dim(dataClickTrue)[1],dim(dataClickTrue)[1]*0.8),]
+dataClickFalseTrain = dataClickFalse[sample(dim(dataClickFalse)[1],dim(dataClickFalse)[1]*0.8),]
+
+dataClickTrueTest = setdiff(dataClickTrue, dataClickTrueTrain)
+dataClickFalseTest = setdiff(dataClickFalse, dataClickFalseTrain)
+
+dataTrain = rbind(dataClickTrueTrain, dataClickFalseTrain)
+dataTest = rbind(dataClickTrueTest, dataClickFalseTest)
+```
+
+<br>
+
+# 分類樹
+
+採用10-fold cross validation，設定樹的長度為10。
+
+結果是.......
+
+```{r tree start}
+tree_control = rpart.control(maxdepth = 10, xval = 10) #,
+                             # minisplit=2, minbucket = 1)
+
+tree_origin = rpart(formula = click_bool ~ ., 
+                      data = dataTrain,
+                      method = "class",
+                      control=tree_control)
+rpart.plot(tree_origin, extra = 100)
+```
+
+## Imbalanced Data
+
+由於資料中類別極不平均，令資料各類出現次數接近可能分類較好，使用Under-Sampling及Over-Sampling嘗試處理。Under-Sampling指對類別次數多的資料抽樣，Over-Sampling指對類別次數少的資料重複抽樣，至出現次數接近類別較多的資料。
+
+## Under Sampling
+
+```{r under sampling, results='hold'}
+set.seed(1234)
+dataClickFalseTrainUnder = 
+        dataClickFalseTrain[
+        sample(dim(dataClickFalse)[1], 
+               dim(dataClickTrueTrain)[1]
+               ),
+        ]
+
+dataTrainUnderSample = rbind(dataClickFalseTrainUnder, dataClickTrueTrain)
+
+tree_origin = rpart(formula = click_bool ~ ., 
+                      data = dataTrainUnderSample,
+                      method = "class",
+                      control=tree_control)
+rpart.plot(tree_origin, extra = 100)
+
+printcp(tree_origin)
+# resubstitution error rate          : rel error*Root node error = 0.52459*0.5 = 0.262295
+# 10-fold cross-validated error rate : xerror*Root node error    = 0.80656*0.5 = 0.40328
+# summary(tree_origin)
+```
+
+觀察nsplit與xerror那兩欄，nsplit指有多少個分支，xerror乘Root node error指對應的cross-validation error rate，可見分支越多，error rate有下降，這模型分支也不多，所以並無修剪，直接使用此模型。
+
+```{r}
+###剪樹
+# # prune the tree
+tree_prune = prune.rpart(tree_origin,cp=0)
+# rpart.plot(tree_prune, extra = 100)
+```
+
+###正確率--訓練
+```{r}
+# training
+tree_pred = factor(predict(tree_prune, dataTrainUnderSample, type = "class"), levels = c('TRUE','FALSE'))
+a1 = table(tree_pred, True_class = factor(dataTrainUnderSample$click_bool, levels = c('TRUE','FALSE')))
+a2 = data.frame(item = c('precision','recall','accuracy','F-measure'),
+                number = c(a1[1,1] / (a1[1,1]+a1[1,2]),
+                           a1[1,1] / (a1[1,1]+a1[2,1]),
+                           (a1[1,1]+a1[2,2]) / (sum(a1)),
+                           (2)/( (1/(a1[1,1]/(a1[1,1]+a1[1,2]))) + (1/(a1[1,1]/(a1[1,1]+a1[2,1]))))
+                )
+)
+print(a1)
+print(a2)
+```
+
+<br>
+
+###正確率--測試
+```{r}
+# testing
+tree_pred = factor(predict(tree_prune, dataTest, type = "class"), levels = c('TRUE','FALSE'))
+a1 = table(tree_pred, True_class = factor(dataTest$click_bool, levels = c('TRUE','FALSE')))
+a2 = data.frame(item = c('precision','recall','accuracy','F-measure'),
+                number = c(a1[1,1] / (a1[1,1]+a1[1,2]),
+                           a1[1,1] / (a1[1,1]+a1[2,1]),
+                           (a1[1,1]+a1[2,2]) / (sum(a1)),
+                           (2)/( (1/(a1[1,1]/(a1[1,1]+a1[1,2]))) + (1/(a1[1,1]/(a1[1,1]+a1[2,1]))))
+                )
+)
+print(a1)
+print(a2)
+```
+
+在訓練集的時候表現不算太好，至少不昰離譜，但到了測試，就錯得非常離譜，預測會點擊的，事實很多都沒點擊，只有recall能保持與訓練集接近。
+
+
+<br>
+
+## Over Sampling
+
+```{r over sampling, results='hold'}
+set.seed(1234)
+s1 = sample(dim(dataClickTrueTrain)[1], dim(dataClickFalseTrain)[1], replace = TRUE)
+dataTrainOverSample = rbind(dataClickTrueTrain[s1,], as.data.frame(dataClickFalseTrain))
+
+tree_origin = rpart(formula = click_bool ~ ., 
+                      data = dataTrainOverSample,
+                      method = "class",
+                      control=tree_control)
+rpart.plot(tree_origin, extra = 100)
+
+printcp(tree_origin)
+# resubstitution error rate          : rel error*Root node error = 0.52459*0.5 = 0.262295
+# 10-fold cross-validated error rate : xerror*Root node error    = 0.80656*0.5 = 0.40328
+# summary(tree_origin)
+```
+
+
+```{r}
+###剪樹
+# # prune the tree
+tree_prune = prune.rpart(tree_origin,cp=0)
+# rpart.plot(tree_prune, extra = 100)
+```
+
+###正確率--訓練
+```{r}
+# training 
+tree_pred = factor(predict(tree_prune, dataTrainOverSample, type = "class"),levels = c('TRUE','FALSE'))
+a1 = table(tree_pred, True_class = factor(dataTrainOverSample$click_bool, levels = c('TRUE','FALSE')))
+a2 = data.frame(item = c('precision','recall','accuracy','F-measure'),
+                number = c(a1[1,1] / (a1[1,1]+a1[1,2]),
+                           a1[1,1] / (a1[1,1]+a1[2,1]),
+                           (a1[1,1]+a1[2,2]) / (sum(a1)),
+                           (2)/( (1/(a1[1,1]/(a1[1,1]+a1[1,2]))) + (1/(a1[1,1]/(a1[1,1]+a1[2,1]))))
+                )
+)
+print(a1)
+print(a2)
+```
+
+<br>
+
+###正確率--測試
+```{r}
+# testing
+tree_pred = factor(predict(tree_prune, dataTest, type = "class"), levels = c('TRUE','FALSE'))
+a1 = table(tree_pred, True_class = factor(dataTest$click_bool, levels = c('TRUE','FALSE')))
+a2 = data.frame(item = c('precision','recall','accuracy','F-measure'),
+                number = c(a1[1,1] / (a1[1,1]+a1[1,2]),
+                           a1[1,1] / (a1[1,1]+a1[2,1]),
+                           (a1[1,1]+a1[2,2]) / (sum(a1)),
+                           (2)/( (1/(a1[1,1]/(a1[1,1]+a1[1,2]))) + (1/(a1[1,1]/(a1[1,1]+a1[2,1]))))
+                )
+)
+print(a1)
+print(a2)
+```
+
+從測試資料來看，precision、accuracy與F-measure比剛才Under-Sampling的好一點，但precision仍然太低。
+
+<br>
+
+可見分類結果非常差，之後會嘗試加入其他欄位、加權調整及其他演算法。
+
+
+
+
+
+```{r, echo=FALSE}
+# 附錄
+
+# 取前三十五萬筆資料，是因為之前考慮到人數與人次問題，若以srch_id計算，99.9%會點擊，點擊後大約67%會訂房，但以srch_id為主體計算會選失其他資訊，亦不符點擊率計算方法，而且可能兩個srch_id是同一人在不同時間查詢，所以最後選擇以人次計算。
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
