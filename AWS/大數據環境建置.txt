@@ -11,6 +11,9 @@ chmod 400 "big_data_uw2.pem"
 scp -i big_data_uw2.pem Classification.py root@ec2-54-202-29-52.us-west-2.compute.amazonaws.com:/root/.
 
 *****連到雲端虛擬機*********************************
+chmod 400 "big_data_uw2.pem"
+export AWS_ACCESS_KEY_ID=AKIAIIK2R4ZOXCPJ5AMA
+export AWS_SECRET_ACCESS_KEY=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
 ssh -i big_data_uw2.pem root@ec2-54-202-29-52.us-west-2.compute.amazonaws.com
 ****************************************************
 
@@ -37,24 +40,17 @@ sc._jsc.hadoopConfiguration().set("fs.s3n.awsAccessKeyId", "AKIAIIK2R4ZOXCPJ5AMA
 sc._jsc.hadoopConfiguration().set("fs.s3n.awsSecretAccessKey", "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")
 data = sc.textFile("s3n://bigdatabucket20170610/train.csv").count()
 
+
+*****雲端運算*********************************
+
 //執行程式
 time ~/spark/bin/spark-submit --master spark://ec2-54-202-29-52.us-west-2.compute.amazonaws.com:7077 Classification.py
 
+//Master管理頁面
+http://ec2-54-202-29-52.us-west-2.compute.amazonaws.com:8080
 
+//硬體監控
+http://ec2-54-202-29-52.us-west-2.compute.amazonaws.com:5080/ganglia/
 
-
------------Local---------------------
-sudo apt-get install python-pandas
-sudo apt-get install python-sklearn
-
-wget https://3230d63b5fc54e62148e-c95ac804525aac4b6dba79b00b39d1d3.ssl.cf1.rackcdn.com/Anaconda-2.3.0-Linux-x86_64.sh
-bash Anaconda-2.3.0-Linux-x86_64.sh
-export PATH=~/anaconda/bin:$PATH
-conda --version    #確定有裝好
-conda update scikit-learn
-
-spark-submit Classification.py
-
-
-
-
+//運算頁面
+http://ec2-54-202-29-52.us-west-2.compute.amazonaws.com:4040/jobs/
