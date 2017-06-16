@@ -1,0 +1,60 @@
+//雲端佈署
+//放入big_data_uw2.pem
+export AWS_ACCESS_KEY_ID=AKIAIIK2R4ZOXCPJ5AMA
+export AWS_SECRET_ACCESS_KEY=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
+chmod 400 "big_data_uw2.pem"
+./spark-ec2-branch-2.0/spark-ec2 --key-pair=big_data_uw2 --identity-file=big_data_uw2.pem --region=us-west-2 --zone=us-west-2a --master-instance-type=t2.micro --instance-type=t2.micro --slaves=2 launch test
+
+//雲端虛擬機架設完成
+
+//上傳程式碼
+scp -i big_data_uw2.pem Classification.py root@ec2-54-202-29-52.us-west-2.compute.amazonaws.com:/root/.
+
+*****連到雲端虛擬機*********************************
+ssh -i big_data_uw2.pem root@ec2-54-202-29-52.us-west-2.compute.amazonaws.com
+****************************************************
+
+export AWS_ACCESS_KEY_ID=AKIAIIK2R4ZOXCPJ5AMA
+export AWS_SECRET_ACCESS_KEY=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
+
+//更新package & 安裝套件
+wget https://3230d63b5fc54e62148e-c95ac804525aac4b6dba79b00b39d1d3.ssl.cf1.rackcdn.com/Anaconda-2.3.0-Linux-x86_64.sh
+bash Anaconda-2.3.0-Linux-x86_64.sh
+export PATH=~/anaconda/bin:$PATH
+
+//確定有裝好
+conda --version    
+
+yum -y update
+yum install epel-release
+pip install --upgrade pip
+pip install numpy matplotlib
+pip install pandas
+conda install scikit-learn
+
+//讀檔 測試中
+sc._jsc.hadoopConfiguration().set("fs.s3n.awsAccessKeyId", "AKIAIIK2R4ZOXCPJ5AMA")
+sc._jsc.hadoopConfiguration().set("fs.s3n.awsSecretAccessKey", "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")
+data = sc.textFile("s3n://bigdatabucket20170610/train.csv").count()
+
+//執行程式
+time ~/spark/bin/spark-submit --master spark://ec2-54-202-29-52.us-west-2.compute.amazonaws.com:7077 Classification.py
+
+
+
+
+-----------Local---------------------
+sudo apt-get install python-pandas
+sudo apt-get install python-sklearn
+
+wget https://3230d63b5fc54e62148e-c95ac804525aac4b6dba79b00b39d1d3.ssl.cf1.rackcdn.com/Anaconda-2.3.0-Linux-x86_64.sh
+bash Anaconda-2.3.0-Linux-x86_64.sh
+export PATH=~/anaconda/bin:$PATH
+conda --version    #確定有裝好
+conda update scikit-learn
+
+spark-submit Classification.py
+
+
+
+
