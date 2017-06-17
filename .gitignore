@@ -2,8 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-.test.csv
-.train.csv
+test.csv
+train.csv
 sample.csv
 sample2.csv
 EDA_0.0.1.R
