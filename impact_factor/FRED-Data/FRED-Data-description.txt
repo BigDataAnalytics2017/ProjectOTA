@@ -1,0 +1,12 @@
+DCOILWTICO: Crude Oil Prices: West Texas Intermediate (WTI) - Cushing, Oklahoma
+DEXCAUS: Canada / U.S. Foreign Exchange Rate
+DEXCHUS: China / U.S. Foreign Exchange Rate
+DEXJPUS: Japan / U.S. Foreign Exchange Rate
+DEXKOUS: South Korea / U.S. Foreign Exchange Rate
+DEXUSAL: U.S. / Australia Foreign Exchange Rate
+DEXUSEU: U.S. / Euro Foreign Exchange Rate
+DTB1YR: 1-Year Treasury Bill: Secondary Market Rate
+DTB3: 3-Month Treasury Bill: Secondary Market Rate
+DTB4WK: 4-Week Treasury Bill: Secondary Market Rate
+DTB6: 6-Month Treasury Bill: Secondary Market Rate
+DTWEXB: Trade Weighted U.S. Dollar Index: Broad
