@@ -1,0 +1,74 @@
+bigdatateam123@cluster-2-m:~$ spark-submit ClassificationLogisticRegression.py 
+/home/bigdatateam123/ClassificationLogisticRegression.py:33: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_starrating[(data.visitor_hist_starrating > 0)==False] = 0
+/home/bigdatateam123/ClassificationLogisticRegression.py:34: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_adr_usd[(data.visitor_hist_adr_usd > 0)==False] = 0
+/home/bigdatateam123/ClassificationLogisticRegression.py:35: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.prop_location_score2[(data.prop_location_score2 > 0)==False] = 0.0
+/home/bigdatateam123/ClassificationLogisticRegression.py:38: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.srch_query_affinity_score[(data.srch_query_affinity_score > 0)==False] = 0.0
+/home/bigdatateam123/ClassificationLogisticRegression.py:47: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.orig_destination_distance[(data.orig_destination_distance > 0)==False] = numpy.sum((numpy.full([10,len(Cluster_predict)], Cluster_predict).T == numpy.full([len(Cluster_predict), 10], numpy.arange(10))) * center, axis=1)
+/home/bigdatateam123/ClassificationLogisticRegression.py:35: SettingWithCopyWarning: 
+/home/bigdatateam123/anaconda/lib/python2.7/site-packages/matplotlib/collections.py:590: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elem
+entwise comparison
+  if self._edgecolors == str('face'):
+Coef
+                                Log
+site_id                     -0.0012
+visitor_location_country_id  0.0004
+visitor_hist_starrating      0.0003
+visitor_hist_adr_usd         0.0023
+prop_country_id              0.0001
+prop_id                     -0.0000
+prop_starrating              0.0012
+prop_review_score            0.0024
+prop_brand_bool              0.0006
+prop_location_score1         0.0008
+prop_log_historical_price   -0.0001
+position                    -0.0739
+price_usd                   -0.0000
+promotion_flag               0.0011
+srch_destination_id          0.0000
+srch_length_of_stay         -0.0062
+srch_booking_window         -0.0044
+srch_adults_count           -0.0007
+srch_children_count          0.0002
+srch_room_count              0.0003
+srch_saturday_night_bool     0.0002
+srch_query_affinity_score    0.0000
+orig_destination_distance    0.0000
+random_bool                 -0.0063
+comp1_inv                   -0.0000
+comp2_inv                    0.0000
+comp3_inv                   -0.0000
+comp4_inv                   -0.0000
+comp5_inv                   -0.0000
+comp6_inv                    0.0000
+comp7_inv                    0.0000
+comp8_inv                    0.0000
+date_year                    0.0001
+date_month                   0.0001
+date_day                    -0.0005
+rate_percent_diff            0.0000
+LogisticRegressionCV report
+             precision    recall  f1-score   support
+  not click     0.9769    0.9568    0.9667   3850393
+      click     0.1250    0.2146    0.1580    110767
+avg / total     0.9531    0.9360    0.9441   3961160
+Time: 0 days 01:15:50.205844

@@ -1,0 +1,91 @@
+bigdatateam123@cluster-2-m:~$ spark-submit ClassificationAdaBoostClassifier.py 
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:32: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_starrating[(data.visitor_hist_starrating > 0)==False] = 0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:33: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_adr_usd[(data.visitor_hist_adr_usd > 0)==False] = 0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:34: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+data.comp7_inv = (data.comp7_inv > 0) * 1
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+bigdatateam123@cluster-2-m:~$ spark-submit ClassificationAdaBoostClassifier.py 
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:32: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_starrating[(data.visitor_hist_starrating > 0)==False] = 0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:33: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.visitor_hist_adr_usd[(data.visitor_hist_adr_usd > 0)==False] = 0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:34: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.prop_location_score2[(data.prop_location_score2 > 0)==False] = 0.0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:37: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.srch_query_affinity_score[(data.srch_query_affinity_score > 0)==False] = 0.0
+/home/bigdatateam123/ClassificationAdaBoostClassifier.py:46: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  data.orig_destination_distance[(data.orig_destination_distance > 0)==False] = numpy.sum((numpy.full([10,len(Cluster_predict)], Cluster_predict).T == numpy.full([len(Cluster_predict), 10], numpy.arange(10))) * center, axis=1)
+/home/bigdatateam123/anaconda/lib/python2.7/site-packages/matplotlib/collections.py:590: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+data.comp7_inv = (data.comp7_inv > 0) * 1
+  if self._edgecolors == str('face'):
+AdaBoostClassifier parameters with cross-validation
+{'n_estimators': 50, 'base_estimator': None, 'random_state': None, 'learning_rate': 1.0, 'algorithm': 'SAMME.R'}
+Feature importance or coef
+                              Ada
+site_id                      0.02
+visitor_location_country_id  0.00
+visitor_hist_starrating      0.00
+visitor_hist_adr_usd         0.02
+prop_country_id              0.00
+prop_id                      0.00
+prop_starrating              0.04
+prop_review_score            0.08
+prop_brand_bool              0.02
+prop_location_score1         0.08
+prop_log_historical_price    0.02
+position                     0.38
+price_usd                    0.14
+promotion_flag               0.02
+srch_destination_id          0.00
+srch_length_of_stay          0.04
+srch_booking_window          0.02
+srch_adults_count            0.02
+srch_children_count          0.02
+srch_room_count              0.02
+srch_saturday_night_bool     0.00
+srch_query_affinity_score    0.00
+orig_destination_distance    0.00
+random_bool                  0.02
+comp1_inv                    0.00
+comp2_inv                    0.00
+comp3_inv                    0.00
+comp4_inv                    0.00
+comp5_inv                    0.00
+comp6_inv                    0.00
+comp7_inv                    0.00
+comp8_inv                    0.00
+date_year                    0.00
+date_month                   0.00
+date_day                     0.00
+rate_percent_diff            0.04
+AdaBoostClassifier report
+             precision    recall  f1-score   support
+  not Click     0.9861    0.8664    0.9224   3850574
+      Click     0.1098    0.5741    0.1844    110586
+avg / total     0.9616    0.8582    0.9017   3961160
+Time: 0 days 01:14:26.243478
